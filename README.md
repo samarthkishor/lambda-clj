@@ -1,6 +1,16 @@
 # lambda
 
-A simple untyped Lambda Calculus implementation in Clojure
+A simple untyped lambda calculus implementation in Clojure
+
+## Sources
+
+The following sources were extremely helpful in learning the basics of lambda calculus:
+
+- <https://brilliant.org/wiki/lambda-calculus/>
+- [Lambda Calculus as a Programming Language (pdf)](http://andrei.clubcisco.ro/cursuri/2pp/Calculul%20lambda%20ca%20limbaj%20de%20programare.pdf)
+- [A Brief and Informal Introduction to the Lambda Calculus (pdf)](http://www.cs.yale.edu/homes/hudak/CS201S08/lambda.pdf)
+- [Lambda Calculus (pdf)](https://www21.in.tum.de/teaching/logik/SS12/lambda-en.pdf)
+- ["Making a usable language from Lambda Calculus" (video)](https://www.youtube.com/watch?v=MAB11qXZnuU )
 
 ## License
 
