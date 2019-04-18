@@ -2,6 +2,12 @@
 
 A simple untyped lambda calculus implementation in Clojure
 
+## Documentation
+
+Read the file [lambda.org](lambda.org) for a brief explanation of the
+fundamental concepts of lambda caluclus and an in-depth explanation of how to
+implement it in Clojure.
+
 ## Sources
 
 The following sources were extremely helpful in learning the basics of lambda calculus:

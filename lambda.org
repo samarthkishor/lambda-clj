@@ -1,0 +1,142 @@
+#+TITLE: A Lambda Calculus Implementation in Clojure
+#+AUTHOR: Samarth Kishor
+
+* Why Lambda Calculus?
+Lambda calculus is the theoretical basis of all functional programming languages.  Turing Machines and the lambda calculus are equivalent theoretical models of computation.  While Turing Machines are more abstract and more difficult to implement in a program, lambda calculus is rooted in mathematics and its simple nature makes it easy to implement in a language that supports first-class functions.
+
+* Booleans
+
+Boolean values and operations are the building blocks of logic---a crucial component of any program.  Since lambda calculus only has functions, constructing boolean values does not seem obvious.
+
+Here are the boolean primitives =true= and =false=:
+
+#+BEGIN_SRC clojure
+(def TRUE
+  "The boolean value for TRUE"
+  (fn [x]
+    (fn [y]
+      x)))
+
+(def FALSE
+  "The boolean value for FALSE"
+  (fn [x]
+    (fn [y]
+      y)))
+#+END_SRC
+
+Essentially, =true= is a function that takes two arguments and returns the first.  =false= is constructed similarly but returns the second argument.  This distinction becomes more clear when we look at the definition for =and=.
+
+=and= takes in two functions and applies the result of applying the first function to the second function to the first function.  That sounds complicated so let's break it down:
+
+Note that the arrow comment =;; =>= represents a Beta reduction, or substitution.  A substitution is when an argument is substituted inside a function.
+
+#+BEGIN_SRC clojure
+(def AND
+  "The boolean AND operation"
+  (fn [x]
+    (fn [y]
+      ((x y) x))))
+
+((AND TRUE) FALSE)
+;; => (((fn [x] (fn [y] x)) (fn [x] (fn [y] y))) (fn [x] (fn [y] y)))
+;; => ((fn [x] (fn [y] y)) (fn [x] (fn [y] y)))
+;; => (fn [x] (fn [y] y))
+;; => FALSE
+
+((AND TRUE) TRUE)
+;; => (((fn [x] (fn [y] x)) (fn [x] (fn [y] x))) (fn [x] (fn [y] x)))
+;; => ((fn [x] (fn [y] x)) (fn [x] (fn [y] x)))
+;; => (fn [x] (fn [y] x))
+;; => TRUE
+#+END_SRC
+
+* Numbers
+No programming language is complete without some way of representing numbers and lambda calculus solves this problem with Church Numerals to express the natural numbers (starting from zero).  Zero is just the boolean value =false=, and the successive natural numbers build from this definition with the successor function =succ=.
+
+#+BEGIN_SRC clojure
+(def SUCC
+  "The successor function, returns n + 1"
+  (fn [w]
+    (fn [y]
+      (fn [x]
+        (y ((w y) x))))))
+
+(def ZERO
+  "The number 0"
+  (fn [s]
+    (fn [z]
+      z)))
+
+(def ONE
+  "The number 1"
+  (fn [s]
+    (fn [z]
+      (s z))))
+
+(SUCC ZERO)
+;; => (fn [y] (fn [x] (y (((fn [s] (fn [z] z)) y) x))))
+;; => (fn [y] (fn [x] (y x)))
+;; => ONE
+#+END_SRC
+
+Remember that for =(((fn [s] (fn [z] z)) y) x)=, =s= gets assigned to =y= and =z= gets assigned to =x= because =y= and =x= respectively are the first and second arguments of the function.  Since functions in lambda calculus only take one parameter, a technique called currying is used to support functions with multiple parameters and passing multiple arguments to functions.  The above function application can be written as =((fn [s z] z) y x)= without currying in standard Clojure which supports anonymous functions with multiple parameters.
+
+* Data
+
+The simplest form of encoding data in the lambda calculus is a =cons= cell, otherwise known as a node in a linked list.  A =cons= cell is simply an association list or pair with two elements, a =car= and a =cdr=.  For example, =(cons 0 1)= represents the pair =(0 . 1)=.
+
+In lambda calculus, to get the =car= (the first element) of a list, simply pass in =true= to the =cons= cell.  If you look at the definition for =true= in lambda calculus, it takes in two arguments and returns the first.  Likewise, to get the =cdr= (the last element) pass =false= to the =cons= cell.  A linked list is implemented by chaining together =cons= cells, with the last element of the first =cons= cell being =nil= or =false=.  For example, the list ='(1 2 3)= is equivalent to =(1 . (2 . (3 . nil))=.
+
+#+BEGIN_SRC clojure
+(def CONS
+  "Pair (x, y) which is equivalent to the cons cell (x . y)"
+  (fn [x]
+    (fn [y]
+      (fn [pair]
+        ((pair x) y)))))
+
+((CONS 1) 0) ;; => (fn [0] (fn [1] (fn [pair] ((pair 0) 1))))
+
+(((CONS 1) 0) TRUE) ;; => (((fn [x] (fn [y] x)) 1) 0) => 1
+(((CONS 1) 0) FALSE) ;; => (((fn [x] (fn [y] y)) 1) 0) => 0
+#+END_SRC
+
+* Recursion
+
+With booleans, numbers, and data, we can write a decent number of programs using lambda calculus.  However, to reach Turing-completeness we need to implement recursion.  A language doesn't even need loops or =goto= statements to be Turing complete because simple recursion can simulate any kind of loop.  For example, the Scheme programming language does not have any kind of built-in loop construction and just uses recursion with tail-call optimization when possible to efficiently generate loops (however one can always implement =while= or =for= loops in Scheme with a macro).
+
+The Y Combinator is a clever solution to the problem of self-referentiality.  Since lambda calculus does not have variables, there is no way for a recursive function to recurse by calling itself, since it has no name to refer to.  Fixed point combinators solve this problem by creating a function that returns its fixed point.  When supplied as the input to a function, a fixed point returns the same value as the output of the function when applying the function to the fixed point.  In other words, it is a value that does not change under the application of its function: =(fix f) = (f (fix f))=.  The Y Combinator is just a special kind of fixed point combinator that allows a function to refer to itself.
+
+Once we have the Y Combinator, we can use it to implement any recursive function.  However, there is one slight caveat before things will work as expected: Clojure is an eagerly evaluated language (as opposed to lazily evaluated languages such as Haskell) and does not have implicit tail-call optimization which means that the call stack will quickly blow up if recursive calls are not wrapped in anonymous functions.
+
+#+BEGIN_SRC clojure
+(def FIX
+  "The Y (Fixed Point) Combinator"
+  (fn [f]
+    ((fn [x]
+       (x x))
+     (fn [x]
+       (f (fn [y]
+            (x x) y))))))
+
+(def FACTORIAL-attempt
+  "How you would write the factorial function in a lazily evaluated lambda calculus"
+  (fn [f]
+    (fn [n]
+      (IF (ZERO? n)
+          ONE
+          (PROD n (f (DEC n)))))))
+
+(def FACT
+  "The factorial function"
+  (fn [f]
+    (fn [n]
+      (IF (ZERO? n)
+          (fn [_]
+            ONE)
+          (fn [_]
+            (PROD n (f (DEC n))))))))
+
+(FACT ONE) ;; this just "generates" the function and does not evaluate it
+((FIX FACT) ONE) ;; => ONE
+#+END_SRC
